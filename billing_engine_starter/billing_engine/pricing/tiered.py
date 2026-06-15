@@ -52,9 +52,6 @@ class TieredPricing(PricingStrategy):
         for tier in tiers:
             if tier.unit_price.currency != tiers[0].unit_price.currency:
                 raise ValueError("All tiers must have the same currency")
-            
-        if not tiers:
-            raise ValueError("At least one tier is required!")
         
         if tiers[-1].to_units is not None:
             raise ValueError("Top tier must be open-ended")
