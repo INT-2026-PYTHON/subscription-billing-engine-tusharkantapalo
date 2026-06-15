@@ -49,4 +49,5 @@ class GSTCalculator(TaxCalculator):
             components = [(f"IGST {self.igst * 100}%", igst_amt)]
             total = igst_amt
 
-        return TaxBreakdown(components=components, total=total,)
+        breakdown = TaxBreakdown(components=components, total=total)
+        return breakdown
