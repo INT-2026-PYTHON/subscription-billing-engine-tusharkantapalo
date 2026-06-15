@@ -16,7 +16,7 @@ class FlatRate(PricingStrategy):
         if not isinstance(amount, Money):
             raise TypeError("Amount must be of type Money!")
 
-        if amount.is_negative:
+        if amount.is_negative():
             raise ValueError("Amount cannot be negative!")
         
         self.amount = amount

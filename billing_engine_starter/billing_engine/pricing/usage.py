@@ -16,11 +16,13 @@ class UsageBased(PricingStrategy):
         if not isinstance(unit_price, Money):
             raise TypeError("Unit price must be of type Money!")
 
-        if unit_price.is_negative:
+        if unit_price.is_negative():
             raise ValueError("Unit price cannot be negative!")
 
         self.unit_price = unit_price
 
     def calculate(self, quantity: int) -> Money:
-        
+        if quantity < 0:
+            raise ValueError("Quantity cannot be negative")
+
         return self.unit_price * quantity
