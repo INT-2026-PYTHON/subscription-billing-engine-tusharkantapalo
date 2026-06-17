@@ -72,7 +72,7 @@ class CustomerRepository:
     def add(self, customer: Customer) -> Customer:
 
         with self.db.transaction() as conn:
-            '''cur = conn.execute(
+            cur = conn.execute(
                 """
                 INSERT INTO customers(name, email, country_code, state_code)
                 VALUES (?, ?, ?, ?)
@@ -83,13 +83,6 @@ class CustomerRepository:
                     customer.country_code,
                     customer.state_code,
                 ),
-            )'''
-            cur = q.insert_customer(
-                conn,
-                name=customer.name,
-                email=customer.email,
-                country_code=customer.country_code,
-                state_code=customer.state_code,
             )
 
         return Customer(
@@ -103,11 +96,10 @@ class CustomerRepository:
     def get(self, customer_id: int) -> Optional[Customer]:
 
         with self.db.connect() as conn:
-            '''row = conn.execute(
+            row = conn.execute(
                 "SELECT * FROM customers WHERE id = ?",
                 (customer_id,),
-            ).fetchone()'''
-            row = q.select_customer_by_id(conn, customer_id=customer_id)
+            ).fetchone()
 
         if row is None:
             return None
@@ -123,11 +115,10 @@ class CustomerRepository:
     def find_by_email(self, email: str) -> Optional[Customer]:
         
         with self.db.connect() as conn:
-            '''row = conn.execute(
+            row = conn.execute(
                 "SELECT * FROM customers WHERE email = ?",
                 (email,),
-            ).fetchone()'''
-            row = q.select_customer_by_email(conn, email=email)
+            ).fetchone()
 
         if row is None:
             return None
@@ -143,10 +134,9 @@ class CustomerRepository:
     def list_all(self) -> list[Customer]:
         
         with self.db.connect() as conn:
-            '''rows = conn.execute(
+            rows = conn.execute(
                 "SELECT * FROM customers ORDER BY id"
-            ).fetchall()'''
-            rows = q.select_all_customers(conn)
+            ).fetchall()
 
         return [
             Customer(
@@ -178,7 +168,7 @@ class PlanRepository:
     def add(self, plan: Plan) -> Plan:
         
         with self.db.transaction() as conn:
-            '''cur = conn.execute(
+            cur = conn.execute(
                 """
                 INSERT INTO plans(
                     name,
@@ -196,14 +186,6 @@ class PlanRepository:
                     plan.currency,
                     plan.config_json,
                 ),
-            )'''
-            cur = q.insert_plan(
-                conn,
-                name=plan.name,
-                pricing_type=plan.pricing_type.value,
-                billing_period=plan.billing_period.value,
-                currency=plan.currency,
-                config_json=plan.config_json,
             )
 
         return Plan(
@@ -218,11 +200,10 @@ class PlanRepository:
     def get(self, plan_id: int) -> Optional[Plan]:
         
         with self.db.connect() as conn:
-            '''row = conn.execute(
+            row = conn.execute(
                 "SELECT * FROM plans WHERE id = ?",
                 (plan_id,),
-            ).fetchone()'''
-            row = q.select_plan_by_id(conn, plan_id=plan_id)
+            ).fetchone()
 
         if row is None:
             return None
@@ -239,10 +220,9 @@ class PlanRepository:
     def list_all(self) -> list[Plan]:
         
         with self.db.connect() as conn:
-            '''rows = conn.execute(
+            rows = conn.execute(
                 "SELECT * FROM plans ORDER BY id"
-            ).fetchall()'''
-            rows = q.select_all_plans(conn)
+            ).fetchall()
 
         return [
             Plan(
@@ -272,7 +252,7 @@ class PlanTierRepository:
         """Insert a tier; return new id."""
         
         with self.db.transaction() as conn:
-            '''cur = conn.execute(
+            cur = conn.execute(
                 """
                 INSERT INTO plan_tiers(
                     plan_id,
@@ -288,13 +268,6 @@ class PlanTierRepository:
                     to_units,
                     unit_price.to_storage(),
                 ),
-            )'''
-            cur = q.insert_plan_tier(
-                conn,
-                plan_id=plan_id,
-                from_units=from_units,
-                to_units=to_units,
-                unit_price=unit_price.to_storage(),
             )
 
         return cur.lastrowid
@@ -306,7 +279,7 @@ class PlanTierRepository:
         currency lives on the parent plan).
         """
         with self.db.connect() as conn:
-            '''rows = conn.execute(
+            rows = conn.execute(
                 """
                 SELECT *
                 FROM plan_tiers
@@ -314,8 +287,7 @@ class PlanTierRepository:
                 ORDER BY from_units
                 """,
                 (plan_id,),
-            ).fetchall()'''
-            rows = q.select_plan_tiers_for_plan(conn, plan_id=plan_id)
+            ).fetchall()
 
         return [
             (
@@ -345,7 +317,7 @@ class DiscountRepository:
     def add(self, code: str, discount_type: str, value: str, currency: Optional[str] = None) -> int:
         
         with self.db.transaction() as conn:
-            '''cur = conn.execute(
+            cur = conn.execute(
                 """
                 INSERT INTO discounts(
                     code,
@@ -361,13 +333,6 @@ class DiscountRepository:
                     value,
                     currency,
                 ),
-            )'''
-            cur = q.insert_discount(
-                conn,
-                code=code,
-                discount_type=discount_type,
-                value=value,
-                currency=currency,
             )
 
         return cur.lastrowid
@@ -376,15 +341,14 @@ class DiscountRepository:
         """Return raw row as dict, or None. (Discount has no dataclass yet — we use a dict for now.)"""
         
         with self.db.connect() as conn:
-            '''row = conn.execute(
+            row = conn.execute(
                 """
                 SELECT *
                 FROM discounts
                 WHERE code = ?
                 """,
                 (code,),
-            ).fetchone()'''
-            row = q.select_discount_by_code(conn, code=code)
+            ).fetchone()
 
         if row is None:
             return None
@@ -427,7 +391,7 @@ class SubscriptionRepository:
     def add(self, subscription: Subscription) -> Subscription:
         
         with self.db.transaction() as conn:
-            '''cur = conn.execute(
+            cur = conn.execute(
                 """
                 INSERT INTO subscriptions(
                     customer_id,
@@ -453,19 +417,6 @@ class SubscriptionRepository:
                     subscription.past_due_since.isoformat()
                     if subscription.past_due_since else None,
                 ),
-            )'''
-            cur = q.insert_subscription(
-                conn,
-                customer_id=subscription.customer_id,
-                plan_id=subscription.plan_id,
-                status=subscription.status.value,
-                current_period_start=subscription.current_period_start.isoformat(),
-                current_period_end=subscription.current_period_end.isoformat(),
-                trial_end=subscription.trial_end.isoformat()
-                if subscription.trial_end else None,
-                discount_id=subscription.discount_id,
-                past_due_since=subscription.past_due_since.isoformat()
-                if subscription.past_due_since else None,
             )
 
         return Subscription(
@@ -483,11 +434,10 @@ class SubscriptionRepository:
     def get(self, subscription_id: int) -> Optional[Subscription]:
 
         with self.db.connect() as conn:
-            '''row = conn.execute(
+            row = conn.execute(
                 "SELECT * FROM subscriptions WHERE id = ?",
                 (subscription_id,),
-            ).fetchone()'''
-            row = q.select_subscription_by_id(conn, subscription_id=subscription_id)
+            ).fetchone()
 
         if row is None:
             return None
@@ -498,7 +448,9 @@ class SubscriptionRepository:
         """All subscriptions, regardless of status. Used by BillingCycle trial scan."""
         
         with self.db.connect() as conn:
-            rows = q.select_all_subscriptions(conn)
+            rows = conn.execute(
+                "SELECT * FROM subscriptions ORDER BY id"
+            ).fetchall()
 
         return [self._row_to_subscription(row) for row in rows]
 
@@ -508,7 +460,7 @@ class SubscriptionRepository:
          either handle that here or transition them to ACTIVE first in BillingCycle.)
         """
         with self.db.connect() as conn:
-            '''rows = conn.execute(
+            rows = conn.execute(
                 """
                 SELECT *
                 FROM subscriptions
@@ -520,12 +472,7 @@ class SubscriptionRepository:
                     SubscriptionStatus.ACTIVE.value,
                     as_of.isoformat(),
                 ),
-            ).fetchall()'''
-            rows = q.select_subscriptions_due_for_billing(
-                conn,
-                status=SubscriptionStatus.ACTIVE.value,
-                as_of=as_of.isoformat(),
-            )
+            ).fetchall()
 
         return [self._row_to_subscription(row) for row in rows]
 
@@ -537,7 +484,7 @@ class SubscriptionRepository:
     def update_period(self, subscription_id: int, new_start: date, new_end: date) -> None:
         
         with self.db.transaction() as conn:
-            '''conn.execute(
+            conn.execute(
                 """
                 UPDATE subscriptions
                 SET current_period_start = ?,
@@ -549,12 +496,6 @@ class SubscriptionRepository:
                     new_end.isoformat(),
                     subscription_id,
                 ),
-            )'''
-            q.update_subscription_period(
-                conn,
-                subscription_id=subscription_id,
-                new_start=new_start.isoformat(),
-                new_end=new_end.isoformat(),
             )
 
     def update_status(
@@ -565,7 +506,7 @@ class SubscriptionRepository:
     ) -> None:
         
         with self.db.transaction() as conn:
-            '''conn.execute(
+            conn.execute(
                 """
                 UPDATE subscriptions
                 SET status = ?,
@@ -578,13 +519,6 @@ class SubscriptionRepository:
                     if past_due_since else None,
                     subscription_id,
                 ),
-            )'''
-            q.update_subscription_status(
-                conn,
-                subscription_id=subscription_id,
-                new_status=new_status.value,
-                past_due_since=past_due_since.isoformat()
-                if past_due_since else None,
             )
 
     def update_plan(self, subscription_id: int, new_plan_id: int) -> None:
@@ -611,7 +545,7 @@ class UsageRecordRepository:
     def add(self, subscription_id: int, metric: str, quantity: int) -> int:
         
         with self.db.transaction() as conn:
-            '''cur = conn.execute(
+            cur = conn.execute(
                 """
                 INSERT INTO usage_records(
                     subscription_id,
@@ -625,12 +559,6 @@ class UsageRecordRepository:
                     metric,
                     quantity,
                 ),
-            )'''
-            cur = q.insert_usage_record(
-                conn,
-                subscription_id=subscription_id,
-                metric=metric,
-                quantity=quantity,
             )
 
         return cur.lastrowid
@@ -640,7 +568,7 @@ class UsageRecordRepository:
     ) -> int:
         
         with self.db.connect() as conn:
-            '''row = conn.execute(
+            row = conn.execute(
                 """
                 SELECT COALESCE(SUM(quantity), 0) AS total
                 FROM usage_records
@@ -651,12 +579,7 @@ class UsageRecordRepository:
                     subscription_id,
                     metric,
                 ),
-            ).fetchone()'''
-            row = q.sum_usage_for_subscription_and_metric(
-                conn,
-                subscription_id=subscription_id,
-                metric=metric,
-            )
+            ).fetchone()
 
         return row["total"]
 
@@ -685,7 +608,7 @@ class InvoiceRepository:
         """
         
         with self.db.transaction() as conn:
-            '''cur = conn.execute(
+            cur = conn.execute(
                 """
                 INSERT INTO invoices(
                     subscription_id,
@@ -716,21 +639,6 @@ class InvoiceRepository:
                     if invoice.issued_at else None,
                     invoice.pdf_path,
                 ),
-            )'''
-            cur = q.insert_invoice(
-                conn,
-                subscription_id=invoice.subscription_id,
-                period_start=invoice.period_start.isoformat(),
-                period_end=invoice.period_end.isoformat(),
-                currency=invoice.total.currency,
-                subtotal=invoice.subtotal.to_storage(),
-                discount_total=invoice.discount_total.to_storage(),
-                tax_total=invoice.tax_total.to_storage(),
-                total=invoice.total.to_storage(),
-                status=invoice.status.value,
-                issued_at=invoice.issued_at.isoformat()
-                if invoice.issued_at else None,
-                pdf_path=invoice.pdf_path,
             )
 
         invoice.id = cur.lastrowid
@@ -739,15 +647,14 @@ class InvoiceRepository:
     def get(self, invoice_id: int) -> Optional[Invoice]:
         
         with self.db.connect() as conn:
-            '''row = conn.execute(
+            row = conn.execute(
                 """
                 SELECT *
                 FROM invoices
                 WHERE id = ?
                 """,
                 (invoice_id,),
-            ).fetchone()'''
-            row = q.select_invoice_by_id(conn, invoice_id=invoice_id)
+            ).fetchone()
 
         if row is None:
             return None
@@ -773,25 +680,21 @@ class InvoiceRepository:
         """Used by FirstMonthFree discount."""
         
         with self.db.connect() as conn:
-            '''row = conn.execute(
+            row = conn.execute(
                 """
                 SELECT COUNT(*) AS count
                 FROM invoices
                 WHERE subscription_id = ?
                 """,
                 (subscription_id,),
-            ).fetchone()'''
-            row = q.count_invoices_for_subscription(
-                conn,
-                subscription_id=subscription_id,
-            )
+            ).fetchone()
 
         return row["count"]
 
     def mark_paid(self, invoice_id: int) -> None:
         
         with self.db.transaction() as conn:
-            '''conn.execute(
+            conn.execute(
                 """
                 UPDATE invoices
                 SET status = ?
@@ -801,17 +704,12 @@ class InvoiceRepository:
                     InvoiceStatus.PAID.value,
                     invoice_id,
                 ),
-            )'''
-            q.update_invoice_status(
-                conn,
-                invoice_id=invoice_id,
-                new_status=InvoiceStatus.PAID.value,
             )
 
     def mark_failed(self, invoice_id: int) -> None:
         
         with self.db.transaction() as conn:
-            '''conn.execute(
+            conn.execute(
                 """
                 UPDATE invoices
                 SET status = ?
@@ -821,11 +719,6 @@ class InvoiceRepository:
                     InvoiceStatus.FAILED.value,
                     invoice_id,
                 ),
-            )'''
-            q.update_invoice_status(
-                conn,
-                invoice_id=invoice_id,
-                new_status=InvoiceStatus.FAILED.value,
             )
 
     def set_pdf_path(self, invoice_id: int, path: str) -> None:
@@ -847,7 +740,7 @@ class InvoiceLineItemRepository:
 
     def add(self, line_item: InvoiceLineItem) -> InvoiceLineItem:
         with self.db.transaction() as conn:
-            '''cur = conn.execute(
+            cur = conn.execute(
                 """
                 INSERT INTO invoice_line_items(
                     invoice_id,
@@ -863,13 +756,6 @@ class InvoiceLineItemRepository:
                     line_item.amount.to_storage(),
                     line_item.kind.value,
                 ),
-            )'''
-            cur = q.insert_invoice_line_item(
-                conn,
-                invoice_id=line_item.invoice_id,
-                description=line_item.description,
-                amount=line_item.amount.to_storage(),
-                kind=line_item.kind.value,
             )
 
         return InvoiceLineItem(
@@ -883,7 +769,7 @@ class InvoiceLineItemRepository:
     def list_for_invoice(self, invoice_id: int) -> list[InvoiceLineItem]:
         
         with self.db.connect() as conn:
-            '''rows = conn.execute(
+            rows = conn.execute(
                 """
                 SELECT ili.*, i.currency
                 FROM invoice_line_items ili
@@ -893,11 +779,7 @@ class InvoiceLineItemRepository:
                 ORDER BY ili.id
                 """,
                 (invoice_id,),
-            ).fetchall()'''
-            rows = q.select_line_items_for_invoice(
-                conn,
-                invoice_id=invoice_id,
-            )
+            ).fetchall()
 
         return [
             InvoiceLineItem(
@@ -931,7 +813,7 @@ class LedgerRepository:
 
     def add(self, entry: LedgerEntry) -> LedgerEntry:
         with self.db.transaction() as conn:
-            '''cur = conn.execute(
+            cur = conn.execute(
                 """
                 INSERT INTO ledger_entries(
                     invoice_id,
@@ -951,15 +833,6 @@ class LedgerRepository:
                     entry.direction.value,
                     entry.reason,
                 ),
-            )'''
-            cur = q.insert_ledger_entry(
-                conn,
-                invoice_id=entry.invoice_id,
-                customer_id=entry.customer_id,
-                amount=entry.amount.to_storage(),
-                currency=entry.amount.currency,
-                direction=entry.direction.value,
-                reason=entry.reason,
             )
 
         return LedgerEntry(
@@ -974,10 +847,15 @@ class LedgerRepository:
     def list_for_customer(self, customer_id: int) -> list[LedgerEntry]:
         
         with self.db.connect() as conn:
-            rows = q.select_ledger_entries_for_customer(
-                conn,
-                customer_id=customer_id,
-            )
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM ledger_entries
+                WHERE customer_id = ?
+                ORDER BY id
+                """,
+                (customer_id,),
+            ).fetchall()
 
         return [
             LedgerEntry(
