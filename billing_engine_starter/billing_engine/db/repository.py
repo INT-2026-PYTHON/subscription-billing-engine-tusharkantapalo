@@ -521,6 +521,41 @@ class SubscriptionRepository:
                 ),
             )
 
+    def advance_period(self, subscription_id: int) -> None:
+        """
+        Move the billing window forward by one month.
+
+        Example:
+        2026-01-01 → 2026-02-01
+        becomes
+        2026-02-01 → 2026-03-01
+        """
+        sub = self.get(subscription_id)
+
+        if sub is None:
+            return
+
+        old_end = sub.current_period_end
+
+        year = old_end.year
+        month = old_end.month + 1
+
+        if month > 12:
+            month = 1
+            year += 1
+
+        new_end = date(
+            year,
+            month,
+            old_end.day,
+        )
+
+        self.update_period(
+            subscription_id,
+            old_end,
+            new_end,
+        )
+
     def update_plan(self, subscription_id: int, new_plan_id: int) -> None:
         # TODO Day 4.
         # Hint: q.update_subscription_plan(...)
@@ -595,6 +630,13 @@ class InvoiceRepository:
     discounts, tax, final total, status, issue time, and optional PDF path.
     Line items are stored separately by InvoiceLineItemRepository.
     """
+
+    def update_status(self, invoice_id: int, status: InvoiceStatus) -> None:
+        with self.db.connect() as conn:
+            conn.execute(
+                "UPDATE invoices SET status=? WHERE id=?",
+                (status.value, invoice_id),
+            )
 
     def __init__(self, db: Database) -> None:
         self.db = db
@@ -843,6 +885,31 @@ class LedgerRepository:
             direction=entry.direction,
             reason=entry.reason,
         )
+    
+    def post_debit(
+        self,
+        customer_id: int,
+        amount,
+        description: str,
+        as_of=None,):
+        """
+        Record a DEBIT entry in the ledger.
+        """
+        from billing_engine.models import (
+            LedgerEntry,
+            LedgerDirection,
+        )
+
+        return self.add(
+            LedgerEntry(
+                id=None,
+                invoice_id=None,
+                customer_id=customer_id,
+                amount=amount,
+                direction=LedgerDirection.DEBIT,
+                reason=description,
+            )
+        )
 
     def list_for_customer(self, customer_id: int) -> list[LedgerEntry]:
         
@@ -904,15 +971,75 @@ class PaymentAttemptRepository:
         next_retry_at: Optional[datetime],
     ) -> int:
         # TODO Day 3.
-        # Hint: q.insert_payment_attempt(...)
-        raise NotImplementedError("Day 3: implement PaymentAttemptRepository.add")
+        with self.db.transaction() as conn:
+            cur = conn.execute(
+                """
+                INSERT INTO payment_attempts
+                (
+                    invoice_id,
+                    attempt_no,
+                    status,
+                    failure_reason,
+                    next_retry_at
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    invoice_id,
+                    attempt_no,
+                    status,
+                    failure_reason,
+                    next_retry_at.isoformat()
+                    if next_retry_at else None,
+                ),
+            )
+
+        return int(cur.lastrowid)
 
     def list_for_invoice(self, invoice_id: int) -> list[dict]:
         # TODO Day 3.
-        # Hint: q.select_attempts_for_invoice(...)
-        raise NotImplementedError("Day 3: implement PaymentAttemptRepository.list_for_invoice")
+        with self.db.connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM payment_attempts
+                WHERE invoice_id = ?
+                ORDER BY attempt_no
+                """,
+                (invoice_id,),
+            ).fetchall()
+
+        return [
+            {
+                "id": row["id"],
+                "invoice_id": row["invoice_id"],
+                "attempt_no": row["attempt_no"],
+                "status": row["status"],
+                "failure_reason": row["failure_reason"],
+                "next_retry_at": (
+                    datetime.fromisoformat(row["next_retry_at"])
+                    if row["next_retry_at"]
+                    else None
+                ),
+                "created_at": (
+                    datetime.fromisoformat(row["created_at"])
+                    if row["created_at"]
+                    else None
+                ),
+            }
+            for row in rows
+        ]
 
     def count_for_invoice(self, invoice_id: int) -> int:
         # TODO Day 3.
-        # Hint: q.count_attempts_for_invoice(...)
-        raise NotImplementedError("Day 3: implement PaymentAttemptRepository.count_for_invoice")
+        with self.db.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS count
+                FROM payment_attempts
+                WHERE invoice_id = ?
+                """,
+                (invoice_id,),
+            ).fetchone()
+
+        return row["count"]
