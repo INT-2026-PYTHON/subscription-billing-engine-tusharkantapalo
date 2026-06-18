@@ -22,6 +22,7 @@ PRORATION_CREDIT (negative) and PRORATION_CHARGE (positive) line items.
 
 from __future__ import annotations
 
+from decimal import Decimal, ROUND_HALF_UP
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -49,4 +50,56 @@ def compute_proration(
 ) -> ProrationResult:
     """Pure function. STRETCH — implement only after Days 1+2 are green."""
     # TODO Day 4
-    raise NotImplementedError("Day 4: implement compute_proration")
+    # 1. VALIDATION
+    if not (period_start <= switch_date <= period_end):
+        raise ValueError(
+            f"switch_date {switch_date} outside period [{period_start}, {period_end}]"
+        )
+
+    if old_plan_price.currency != new_plan_price.currency:
+        raise ValueError("Cannot prorate across currencies")
+
+    total_days = (period_end - period_start).days
+    if total_days <= 0:
+        raise ValueError("Period must be positive")
+
+    # 2. RATIO COMPUTATION
+    remaining_days = (period_end - switch_date).days
+    ratio = Decimal(remaining_days) / Decimal(total_days)
+
+    # 3. PRORATED AMOUNTS
+    credit_amount = old_plan_price * ratio
+    charge_amount = new_plan_price * ratio
+
+    # 4. TAX CALCULATION
+    credit_tax_raw = tax_calc.apply(credit_amount, tax_context).total
+    charge_tax_raw = tax_calc.apply(charge_amount, tax_context).total
+
+    # 5. ROUND EVERYTHING TO 2 DECIMALS (IMPORTANT FOR TESTS)
+    credit_amount = Money(
+        credit_amount.amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+        credit_amount.currency,
+    )
+
+    charge_amount = Money(
+        charge_amount.amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+        charge_amount.currency,
+    )
+
+    credit_tax = Money(
+        credit_tax_raw.amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+        credit_tax_raw.currency,
+    )
+
+    charge_tax = Money(
+        charge_tax_raw.amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+        charge_tax_raw.currency,
+    )
+
+    # 6. RETURN RESULT
+    return ProrationResult(
+        credit_amount=credit_amount,
+        charge_amount=charge_amount,
+        credit_tax=credit_tax,
+        charge_tax=charge_tax,
+    )
